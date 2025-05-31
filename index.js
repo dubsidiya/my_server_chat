@@ -47,3 +47,8 @@ app.post('/login', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
 });
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} - Body:`, req.body);
+  next();
+});
