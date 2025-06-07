@@ -1,47 +1,66 @@
+require('dotenv').config(); // Загружаем .env переменные
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const { Pool } = require('pg');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Настройка подключения к PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-let users = [];
-let messages = [];
+// Корневой маршрут
+app.get('/', (req, res) => {
+  res.send('Привет! Сервер работает с PostgreSQL!');
+});
 
-// Регистрация
-app.post('/register', (req, res) => {
+// 📌 Эндпоинт: Регистрация
+app.post('/register', async (req, res) => {
   const { email, password } = req.body;
-  if (users.find(u => u.email === email)) {
-    return res.status(400).json({ error: 'Пользователь уже существует' });
+
+  try {
+    // Проверяем, существует ли пользователь
+    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Пользователь уже существует' });
+    }
+
+    // Добавляем пользователя
+    await pool.query('INSERT INTO users (email, password) VALUES ($1, $2)', [email, password]);
+
+    return res.status(201).json({ message: 'Регистрация успешна' });
+  } catch (error) {
+    console.error('Ошибка при регистрации:', error);
+    return res.status(500).json({ message: 'Ошибка сервера' });
   }
-  users.push({ email, password });
-  res.json({ message: 'Регистрация успешна' });
 });
 
-// Вход
-app.post('/login', (req, res) => {
+// 📌 Эндпоинт: Логин
+app.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = users.find(u => u.email === email && u.password === password);
-  if (!user) {
-    return res.status(400).json({ error: 'Неверный email или пароль' });
+
+  try {
+    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1 AND password = $2', [email, password]);
+    if (userCheck.rows.length === 0) {
+      return res.status(401).json({ message: 'Неверный email или пароль' });
+    }
+
+    return res.status(200).json({ message: 'Вход выполнен успешно' });
+  } catch (error) {
+    console.error('Ошибка при входе:', error);
+    return res.status(500).json({ message: 'Ошибка сервера' });
   }
-  res.json({ message: 'Вход успешен' });
 });
 
-// Отправка сообщения
-app.post('/messages', (req, res) => {
-  const { from, to, text } = req.body;
-  messages.push({ from, to, text, date: new Date() });
-  res.json({ message: 'Сообщение отправлено' });
-});
-
-// Получение сообщений
-app.get('/messages', (req, res) => {
-  res.json(messages);
-});
-
-const PORT = 3000;
+// Запуск сервера
 app.listen(PORT, () => {
   console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
 });
