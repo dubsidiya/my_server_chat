@@ -64,11 +64,11 @@ app.post('/login', async (req, res) => {
 app.post('/messages', async (req, res) => {
   const { user_id, content } = req.body;
 
-  try {
-    if (!user_id || !content) {
-      return res.status(400).json({ message: 'user_id и content обязательны' });
-    }
+  if (!user_id || !content) {
+    return res.status(400).json({ message: 'user_id и content обязательны' });
+  }
 
+  try {
     const result = await pool.query(
       'INSERT INTO messages (user_id, content) VALUES ($1, $2) RETURNING *',
       [user_id, content]
