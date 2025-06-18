@@ -12,6 +12,16 @@
   "dependencies": {
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
-  }
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dubsidiya/my_server_chat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dubsidiya/my_server_chat/issues"
+  },
+  "homepage": "https://github.com/dubsidiya/my_server_chat#readme"
 }
