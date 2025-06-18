@@ -81,16 +81,23 @@ app.post('/messages', async (req, res) => {
   }
 });
 
-// 📌 Эндпоинт: Получение всех сообщений
+// Получение всех сообщений с email отправителя
 app.get('/messages', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM messages ORDER BY created_at ASC');
+    const result = await pool.query(`
+      SELECT messages.id, messages.content, messages.created_at, users.email AS sender_email
+      FROM messages
+      JOIN users ON messages.user_id = users.id
+      ORDER BY messages.created_at ASC
+    `);
+
     return res.status(200).json(result.rows);
   } catch (error) {
     console.error('Ошибка при получении сообщений:', error);
     return res.status(500).json({ message: 'Ошибка сервера при получении сообщений' });
   }
 });
+
 
 
 app.listen(PORT, () => {
