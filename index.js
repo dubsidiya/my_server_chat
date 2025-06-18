@@ -1,4 +1,4 @@
-require('dotenv').config(); // Загружаем .env переменные
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
@@ -7,24 +7,19 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Корневой маршрут
 app.get('/', (req, res) => {
-  res.send('Привет! Сервер работает с PostgreSQL!');
+  res.send('Сервер работает с PostgreSQL!');
 });
 
-// 📌 Эндпоинт: Регистрация
 app.post('/register', async (req, res) => {
   const { email, password } = req.body;
 
@@ -35,32 +30,29 @@ app.post('/register', async (req, res) => {
     }
 
     await pool.query('INSERT INTO users (email, password) VALUES ($1, $2)', [email, password]);
-
-    return res.status(201).json({ message: 'Регистрация успешна' });
+    res.status(201).json({ message: 'Регистрация успешна' });
   } catch (error) {
     console.error('Ошибка при регистрации:', error);
-    return res.status(500).json({ message: 'Ошибка сервера' });
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
-// 📌 Эндпоинт: Логин
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1 AND password = $2', [email, password]);
+    const userCheck = await pool.query('SELECT id FROM users WHERE email = $1 AND password = $2', [email, password]);
     if (userCheck.rows.length === 0) {
       return res.status(401).json({ message: 'Неверный email или пароль' });
     }
 
-    return res.status(200).json({ message: 'Вход выполнен успешно' });
+    res.status(200).json({ userId: userCheck.rows[0].id });
   } catch (error) {
     console.error('Ошибка при входе:', error);
-    return res.status(500).json({ message: 'Ошибка сервера' });
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
-// Отправка сообщения
 app.post('/messages', async (req, res) => {
   const { user_id, content } = req.body;
 
@@ -73,7 +65,6 @@ app.post('/messages', async (req, res) => {
       'INSERT INTO messages (user_id, content) VALUES ($1, $2) RETURNING *',
       [user_id, content]
     );
-
     res.status(201).json({ message: 'Сообщение добавлено', data: result.rows[0] });
   } catch (error) {
     console.error('Ошибка при добавлении сообщения:', error);
@@ -81,7 +72,6 @@ app.post('/messages', async (req, res) => {
   }
 });
 
-// Получение всех сообщений с email отправителя
 app.get('/messages', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -90,16 +80,13 @@ app.get('/messages', async (req, res) => {
       JOIN users ON messages.user_id = users.id
       ORDER BY messages.created_at ASC
     `);
-
-    return res.status(200).json(result.rows);
+    res.status(200).json(result.rows);
   } catch (error) {
     console.error('Ошибка при получении сообщений:', error);
-    return res.status(500).json({ message: 'Ошибка сервера при получении сообщений' });
+    res.status(500).json({ message: 'Ошибка сервера при получении сообщений' });
   }
 });
 
-
-
 app.listen(PORT, () => {
-  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
+  console.log(`Сервер запущен на http://localhost:${PORT}`);
 });
