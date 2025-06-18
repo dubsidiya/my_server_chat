@@ -3,6 +3,8 @@ require('dotenv').config(); // Загружаем .env переменные
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const { Pool } = require('pg');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -10,14 +12,8 @@ const pool = new Pool({
   }
 });
 
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Настройка подключения к PostgreSQL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 // Middleware
 app.use(cors());
@@ -33,13 +29,11 @@ app.post('/register', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Проверяем, существует ли пользователь
     const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (userCheck.rows.length > 0) {
       return res.status(400).json({ message: 'Пользователь уже существует' });
     }
 
-    // Добавляем пользователя
     await pool.query('INSERT INTO users (email, password) VALUES ($1, $2)', [email, password]);
 
     return res.status(201).json({ message: 'Регистрация успешна' });
@@ -66,8 +60,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Запуск сервера
 app.listen(PORT, () => {
   console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
 });
-//
