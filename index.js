@@ -59,20 +59,25 @@ app.post('/login', async (req, res) => {
     return res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
-// 📌 Эндпоинт: Отправка сообщения
-app.post('/send', async (req, res) => {
-  const { sender, content } = req.body;
 
-  if (!sender || !content) {
-    return res.status(400).json({ message: 'Отсутствуют поля sender или content' });
-  }
+// Отправка сообщения
+app.post('/messages', async (req, res) => {
+  const { user_id, content } = req.body;
 
   try {
-    await pool.query('INSERT INTO messages (sender, content) VALUES ($1, $2)', [sender, content]);
-    return res.status(201).json({ message: 'Сообщение отправлено' });
+    if (!user_id || !content) {
+      return res.status(400).json({ message: 'user_id и content обязательны' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO messages (user_id, content) VALUES ($1, $2) RETURNING *',
+      [user_id, content]
+    );
+
+    res.status(201).json({ message: 'Сообщение добавлено', data: result.rows[0] });
   } catch (error) {
-    console.error('Ошибка при отправке сообщения:', error);
-    return res.status(500).json({ message: 'Ошибка сервера при отправке сообщения' });
+    console.error('Ошибка при добавлении сообщения:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
