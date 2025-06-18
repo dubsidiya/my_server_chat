@@ -3,7 +3,13 @@ require('dotenv').config(); // Загружаем .env переменные
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
