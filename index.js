@@ -59,6 +59,34 @@ app.post('/login', async (req, res) => {
     return res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
+// 📌 Эндпоинт: Отправка сообщения
+app.post('/send', async (req, res) => {
+  const { sender, content } = req.body;
+
+  if (!sender || !content) {
+    return res.status(400).json({ message: 'Отсутствуют поля sender или content' });
+  }
+
+  try {
+    await pool.query('INSERT INTO messages (sender, content) VALUES ($1, $2)', [sender, content]);
+    return res.status(201).json({ message: 'Сообщение отправлено' });
+  } catch (error) {
+    console.error('Ошибка при отправке сообщения:', error);
+    return res.status(500).json({ message: 'Ошибка сервера при отправке сообщения' });
+  }
+});
+
+// 📌 Эндпоинт: Получение всех сообщений
+app.get('/messages', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM messages ORDER BY created_at ASC');
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Ошибка при получении сообщений:', error);
+    return res.status(500).json({ message: 'Ошибка сервера при получении сообщений' });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
