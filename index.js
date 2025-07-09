@@ -106,7 +106,7 @@ wss.on('connection', (ws) => {
   });
 });
 
- Интеграция с HTTP сервером
+// Интеграция с HTTP сервером
 const server = app.listen(PORT, () => {
   console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
 });
