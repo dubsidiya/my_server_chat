@@ -90,3 +90,42 @@ app.get('/messages', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Сервер запущен на http://localhost:${PORT}`);
 });
+
+const WebSocket = require('ws');
+
+const wss = new WebSocket.Server({ noServer: true });
+const clients = new Set();
+
+wss.on('connection', (ws) => {
+  clients.add(ws);
+  console.log('🟢 Новое соединение WebSocket');
+
+  ws.on('close', () => {
+    clients.delete(ws);
+    console.log('🔴 Соединение закрыто');
+  });
+});
+
+// Интеграция с HTTP сервером
+const server = app.listen(PORT, () => {
+  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
+});
+
+server.on('upgrade', (req, socket, head) => {
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit('connection', ws, req);
+  });
+});
+
+// Функция для отправки нового сообщения всем клиентам
+function broadcastMessage(message) {
+  const msgString = JSON.stringify(message);
+  for (const client of clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(msgString);
+    }
+  }
+}
+
+// После успешной вставки сообщения:
+broadcastMessage(result.rows[0]);
