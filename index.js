@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { Pool } = require('pg');
+const WebSocket = require('ws');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -20,6 +21,44 @@ app.get('/', (req, res) => {
   res.send('Сервер работает с PostgreSQL!');
 });
 
+// Хранилище подключённых клиентов WebSocket
+const clients = new Set();
+
+// Создаём WebSocket-сервер без привязки к порту (интеграция с HTTP)
+const wss = new WebSocket.Server({ noServer: true });
+
+wss.on('connection', (ws) => {
+  clients.add(ws);
+  console.log('🟢 Новое соединение WebSocket');
+
+  ws.on('close', () => {
+    clients.delete(ws);
+    console.log('🔴 Соединение закрыто');
+  });
+});
+
+// Интеграция WebSocket с HTTP-сервером
+const server = app.listen(PORT, () => {
+  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
+});
+
+server.on('upgrade', (req, socket, head) => {
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit('connection', ws, req);
+  });
+});
+
+// Отправка сообщений всем подключённым клиентам
+function broadcastMessage(message) {
+  const msgString = JSON.stringify(message);
+  for (const client of clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(msgString);
+    }
+  }
+}
+
+// 📌 Регистрация пользователя
 app.post('/register', async (req, res) => {
   const { email, password } = req.body;
 
@@ -37,6 +76,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// 📌 Авторизация
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -53,6 +93,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// 📌 Добавление сообщения + отправка по WebSocket
 app.post('/messages', async (req, res) => {
   const { user_id, content } = req.body;
 
@@ -65,13 +106,26 @@ app.post('/messages', async (req, res) => {
       'INSERT INTO messages (user_id, content) VALUES ($1, $2) RETURNING *',
       [user_id, content]
     );
-    res.status(201).json({ message: 'Сообщение добавлено', data: result.rows[0] });
+
+    const userEmailResult = await pool.query('SELECT email FROM users WHERE id = $1', [user_id]);
+    const fullMessage = {
+      id: result.rows[0].id,
+      content: result.rows[0].content,
+      created_at: result.rows[0].created_at,
+      sender_email: userEmailResult.rows[0].email
+    };
+
+    // 📡 Рассылаем новое сообщение по WebSocket
+    broadcastMessage(fullMessage);
+
+    res.status(201).json({ message: 'Сообщение добавлено', data: fullMessage });
   } catch (error) {
     console.error('Ошибка при добавлении сообщения:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 });
 
+// 📌 Получение всех сообщений
 app.get('/messages', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -86,46 +140,3 @@ app.get('/messages', async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера при получении сообщений' });
   }
 });
-
-app.listen(PORT, () => {
-  console.log(`Сервер запущен на http://localhost:${PORT}`);
-});
-
-const WebSocket = require('ws');
-
-const wss = new WebSocket.Server({ noServer: true });
-const clients = new Set();
-
-wss.on('connection', (ws) => {
-  clients.add(ws);
-  console.log('🟢 Новое соединение WebSocket');
-
-  ws.on('close', () => {
-    clients.delete(ws);
-    console.log('🔴 Соединение закрыто');
-  });
-});
-
-// Интеграция с HTTP сервером
-const server = app.listen(PORT, () => {
-  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
-});
-
-server.on('upgrade', (req, socket, head) => {
-  wss.handleUpgrade(req, socket, head, (ws) => {
-    wss.emit('connection', ws, req);
-  });
-});
-
-// Функция для отправки нового сообщения всем клиентам
-function broadcastMessage(message) {
-  const msgString = JSON.stringify(message);
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msgString);
-    }
-  }
-}
-
-// После успешной вставки сообщения:
-broadcastMessage(result.rows[0]);
