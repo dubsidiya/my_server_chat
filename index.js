@@ -106,10 +106,10 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Интеграция с HTTP сервером
-//const server = app.listen(PORT, () => {
-//  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
-//});
+ Интеграция с HTTP сервером
+const server = app.listen(PORT, () => {
+  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
+});
 
 server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, (ws) => {
