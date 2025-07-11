@@ -1,7 +1,8 @@
 import express from 'express';
-import { getUserChats, createGroupChat } from '../controllers/chatController.js';
+import { getUserChats } from '../controllers/chatsController.js';
 
 const router = express.Router();
-router.get('/chats/:userId', getUserChats);
-router.post('/chats', createGroupChat);
+
+router.get('/:userId', getUserChats);
+
 export default router;

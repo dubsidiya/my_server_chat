@@ -37,10 +37,7 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Неверный email или пароль' });
     }
 
-    res.status(200).json({
-      userId: result.rows[0].id,
-      email: result.rows[0].email,
-    });
+    res.status(200).json(result.rows[0]);
   } catch (error) {
     console.error('Ошибка входа:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
