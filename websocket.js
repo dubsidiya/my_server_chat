@@ -1,22 +1,26 @@
-import { Server } from 'ws';
+import ws from 'ws';
 
 const clients = new Map();
 
 export const setupWebSocket = (server) => {
-  const wss = new Server({ server });
+  const wss = new ws.Server({ server });
 
-  wss.on('connection', (ws, req) => {
-    ws.on('message', (msg) => {
-      const data = JSON.parse(msg);
-      if (data.type === 'join' && data.chatId) {
-        if (!clients.has(data.chatId)) clients.set(data.chatId, []);
-        clients.get(data.chatId).push(ws);
+  wss.on('connection', (socket) => {
+    socket.on('message', (msg) => {
+      try {
+        const data = JSON.parse(msg);
+        if (data.type === 'join' && data.chatId) {
+          if (!clients.has(data.chatId)) clients.set(data.chatId, []);
+          clients.get(data.chatId).push(socket);
+        }
+      } catch (e) {
+        console.error('Ошибка разбора WebSocket-сообщения', e);
       }
     });
 
-    ws.on('close', () => {
+    socket.on('close', () => {
       for (const [chatId, sockets] of clients.entries()) {
-        clients.set(chatId, sockets.filter((s) => s !== ws));
+        clients.set(chatId, sockets.filter((s) => s !== socket));
       }
     });
   });
@@ -25,7 +29,7 @@ export const setupWebSocket = (server) => {
 export const broadcastMessage = (chatId, message) => {
   const receivers = clients.get(chatId) || [];
   for (const client of receivers) {
-    if (client.readyState === 1) {
+    if (client.readyState === ws.OPEN) {
       client.send(JSON.stringify(message));
     }
   }

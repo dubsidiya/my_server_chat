@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "my_chat_server",
   "version": "1.0.0",
   "main": "index.js",
