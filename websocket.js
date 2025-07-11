@@ -1,27 +1,32 @@
-const WebSocket = require('ws');
-const clients = new Set();
+import { Server } from 'ws';
 
-function setupWebSocket(server) {
-  const wss = new WebSocket.Server({ server });
+const clients = new Map();
 
-  wss.on('connection', (ws) => {
-    clients.add(ws);
-    console.log('🟢 Новое соединение');
+export const setupWebSocket = (server) => {
+  const wss = new Server({ server });
+
+  wss.on('connection', (ws, req) => {
+    ws.on('message', (msg) => {
+      const data = JSON.parse(msg);
+      if (data.type === 'join' && data.chatId) {
+        if (!clients.has(data.chatId)) clients.set(data.chatId, []);
+        clients.get(data.chatId).push(ws);
+      }
+    });
 
     ws.on('close', () => {
-      clients.delete(ws);
-      console.log('🔴 Соединение закрыто');
+      for (const [chatId, sockets] of clients.entries()) {
+        clients.set(chatId, sockets.filter((s) => s !== ws));
+      }
     });
   });
-}
+};
 
-function broadcastMessage(message) {
-  const msgString = JSON.stringify(message);
-  for (const client of clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(msgString);
+export const broadcastMessage = (chatId, message) => {
+  const receivers = clients.get(chatId) || [];
+  for (const client of receivers) {
+    if (client.readyState === 1) {
+      client.send(JSON.stringify(message));
     }
   }
-}
-
-module.exports = { setupWebSocket, broadcastMessage };
+};

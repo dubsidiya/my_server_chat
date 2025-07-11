@@ -1,9 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { getUserChats, createGroupChat } from '../controllers/chatController.js';
+
 const router = express.Router();
-const chatController = require('../controllers/chatController');
-
-router.post('/private', chatController.createPrivateChat);
-router.post('/group', chatController.createGroupChat);
-router.get('/:userId', chatController.getUserChats);
-
-module.exports = router;
+router.get('/chats/:userId', getUserChats);
+router.post('/chats', createGroupChat);
+export default router;

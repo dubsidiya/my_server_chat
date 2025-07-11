@@ -1,26 +1,28 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import http from 'http';
+
+import authRoutes from './routes/auth.js';
+import chatRoutes from './routes/chats.js';
+import messageRoutes from './routes/messages.js';
+import { setupWebSocket } from './websocket.js';
+
+dotenv.config();
+
 const app = express();
-const http = require('http');
 const server = http.createServer(app);
 
-const { setupWebSocket } = require('./websocket');
-
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// маршруты
-app.use('/auth', require('./routes/auth'));
-app.use('/chats', require('./routes/chats'));
-app.use('/messages', require('./routes/messages'));
+app.use(authRoutes);
+app.use(chatRoutes);
+app.use(messageRoutes);
+
+setupWebSocket(server);
 
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => {
-  console.log(`🚀 Сервер запущен на порту ${PORT}`);
+  console.log(`✅ Сервер запущен на http://localhost:${PORT}`);
 });
-
-// Запускаем WebSocket
-setupWebSocket(server);
