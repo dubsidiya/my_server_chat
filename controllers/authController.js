@@ -9,9 +9,17 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Пользователь уже существует' });
     }
 
-    await pool.query('INSERT INTO users (email, password) VALUES ($1, $2)', [email, password]);
-    res.status(201).json({ message: 'Регистрация успешна' });
-  } catch (err) {
+    const result = await pool.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email',
+      [email, password]
+    );
+
+    res.status(201).json({
+      userId: result.rows[0].id,
+      email: result.rows[0].email,
+    });
+  } catch (error) {
+    console.error('Ошибка регистрации:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
@@ -20,13 +28,21 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await pool.query('SELECT id FROM users WHERE email = $1 AND password = $2', [email, password]);
-    if (user.rows.length === 0) {
-      return res.status(401).json({ message: 'Неверный логин или пароль' });
+    const result = await pool.query(
+      'SELECT id, email FROM users WHERE email = $1 AND password = $2',
+      [email, password]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'Неверный email или пароль' });
     }
 
-    res.json({ userId: user.rows[0].id, email });
-  } catch (err) {
+    res.status(200).json({
+      userId: result.rows[0].id,
+      email: result.rows[0].email,
+    });
+  } catch (error) {
+    console.error('Ошибка входа:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
