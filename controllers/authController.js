@@ -49,7 +49,8 @@ export const login = async (req, res) => {
     res.status(200).json(result.rows[0]);
   } catch (error) {
     console.error('Ошибка входа:', error.message);
-    console.error(error.stack);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
+};
+
 };
