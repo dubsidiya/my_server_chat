@@ -31,7 +31,7 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
-
+  console.log('Login attempt:', { email, password });
   if (!email || !password) {
     return res.status(400).json({ message: 'Email и пароль обязательны' });
   }
@@ -51,6 +51,8 @@ export const login = async (req, res) => {
     console.error('Ошибка входа:', error.message);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
+  console.log('Found users:', result.rows);
+
 };
 
 };
