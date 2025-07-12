@@ -3,6 +3,6 @@ import { getUserChats } from '../controllers/chatsController.js';
 
 const router = express.Router();
 
-router.get('/:userId', getUserChats);
+router.get('/:id', getUserChats);
 
 export default router;
