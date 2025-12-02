@@ -20,32 +20,39 @@ export const getUserChats = async (req, res) => {
   }
 };
 
-export const createChat = async (req, res) => {
-  const { name, userIds } = req.body; // name - название чата, userIds - массив id участников
-  if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-    return res.status(400).json({ message: 'Укажите участников чата' });
-  }
-
+export async function createChat(req, res) {
   try {
-    // Создаем чат (название может быть null для личных чатов)
-    const chatResult = await pool.query(
-      'INSERT INTO chats (name) VALUES ($1) RETURNING id, name',
-      [name || null]
-    );
-    const chat = chatResult.rows[0];
+    const { name, isGroup, members } = req.body;
 
-    // Добавляем участников в chat_members
-    const insertPromises = userIds.map(userId =>
-      pool.query('INSERT INTO chat_members (chat_id, user_id) VALUES ($1, $2)', [
-        chat.id,
-        userId,
-      ])
+    if (!Array.isArray(members) || members.length === 0) {
+      return res.status(400).json({ message: 'Укажите участников чата' });
+    }
+
+    // Создаем чат
+    const chatResult = await db.query(
+      `INSERT INTO chats (name, is_group) VALUES ($1, $2) RETURNING id, name, is_group`,
+      [name, isGroup]
     );
-    await Promise.all(insertPromises);
+
+    const chat = chatResult.rows[0];
+    const chatId = chat.id;
+
+    // Добавляем участников (чтобы и создатель был в списке)
+    // Например, если в members есть userId создателя, отлично.
+    // Если нет — добавь его тоже.
+
+    const insertMembersValues = members
+      .map((_, i) => `($1, $${i + 2})`)
+      .join(',');
+
+    await db.query(
+      `INSERT INTO chat_members (chat_id, user_id) VALUES ${insertMembersValues}`,
+      [chatId, ...members]
+    );
 
     res.status(201).json(chat);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Не удалось создать чат' });
+    console.error('Ошибка создания чата:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
   }
-};
+}
