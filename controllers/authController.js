@@ -1,5 +1,4 @@
 import pool from '../db.js';
-
 export const register = async (req, res) => {
   const { email, password } = req.body;
 
