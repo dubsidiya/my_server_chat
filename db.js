@@ -72,6 +72,7 @@
 // db.js
 import pkg from 'pg';
 const { Pool } = pkg;
+//DATABASE_URL=postgresql://neondb_owner:npg_ixHz8n6wQvqJ@ep-plain-sound-ah3ca4ki-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 
 const pool = new Pool({
   connectionString: 'postgresql://neondb_owner:npg_ixHz8n6wQvqJ@ep-plain-sound-ah3ca4ki-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
