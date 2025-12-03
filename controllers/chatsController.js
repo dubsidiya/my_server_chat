@@ -1,58 +1,41 @@
 import pool from '../db.js'; // твой модуль подключения к PostgreSQL
 
-export const getUserChats = async (req, res) => {
-  const userId = req.params.id;
+export const createChat = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT c.id, c.name,
-              CASE WHEN COUNT(cm2.user_id) > 2 THEN true ELSE false END AS is_group
-       FROM chats c
-       JOIN chat_members cm ON cm.chat_id = c.id
-       LEFT JOIN chat_members cm2 ON cm2.chat_id = c.id
-       WHERE cm.user_id = $1
-       GROUP BY c.id`,
-      [userId]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Ошибка при получении чатов' });
-  }
-};
+    const { name, userId, memberIds } = req.body;
 
-export async function createChat(req, res) {
-  try {
-    const { name, isGroup, members } = req.body;
-
-    if (!Array.isArray(members) || members.length === 0) {
-      return res.status(400).json({ message: 'Укажите участников чата' });
+    if (!name || !userId) {
+      return res.status(400).json({ message: "Укажите имя чата и userId" });
     }
 
-    // Создаем чат
+    // Если на клиенте memberIds не переданы → создаём чат только с создателем
+    const members = Array.isArray(memberIds) && memberIds.length > 0
+      ? memberIds
+      : [userId];
+
     const chatResult = await pool.query(
-      `INSERT INTO chats (name) VALUES ($1) RETURNING id, name`,
-      [name]
+      `INSERT INTO chats (name, is_group) VALUES ($1, $2) RETURNING id`,
+      [name, members.length > 1]
     );
 
-    const chat = chatResult.rows[0];
-    const chatId = chat.id;
+    const chatId = chatResult.rows[0].id;
 
-    // Добавляем участников (чтобы и создатель был в списке)
-    // Например, если в members есть userId создателя, отлично.
-    // Если нет — добавь его тоже.
+    // Добавляем участников
+    for (const memberId of members) {
+      await pool.query(
+        `INSERT INTO chat_members (chat_id, user_id) VALUES ($1, $2)`,
+        [chatId, memberId]
+      );
+    }
 
-    const insertMembersValues = members
-      .map((_, i) => `($1, $${i + 2})`)
-      .join(',');
+    return res.status(200).json({
+      id: chatId,
+      name,
+      is_group: members.length > 1
+    });
 
-    await pool.query(
-      `INSERT INTO chat_members (chat_id, user_id) VALUES ${insertMembersValues}`,
-      [chatId, ...members]
-    );
-
-    res.status(201).json(chat);
-  } catch (error) {
-    console.error('Ошибка создания чата:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
+  } catch (e) {
+    console.error("Ошибка createChat:", e);
+    res.status(500).json({ message: "Ошибка создания чата" });
   }
-}
+};
