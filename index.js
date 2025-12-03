@@ -3,6 +3,10 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import http from 'http';
+import dns from 'dns';
+
+// Принудительно используем IPv4 для DNS резолвинга (решает проблему с Render и IPv6)
+dns.setDefaultResultOrder('ipv4first');
 
 import authRoutes from './routes/auth.js';
 import chatRoutes from './routes/chats.js';
