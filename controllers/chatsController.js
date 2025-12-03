@@ -29,9 +29,9 @@ export async function createChat(req, res) {
     }
 
     // Создаем чат
-    const chatResult = await db.query(
-      `INSERT INTO chats (name, is_group) VALUES ($1, $2) RETURNING id, name, is_group`,
-      [name, isGroup]
+    const chatResult = await pool.query(
+      `INSERT INTO chats (name) VALUES ($1) RETURNING id, name`,
+      [name]
     );
 
     const chat = chatResult.rows[0];
@@ -45,7 +45,7 @@ export async function createChat(req, res) {
       .map((_, i) => `($1, $${i + 2})`)
       .join(',');
 
-    await db.query(
+    await pool.query(
       `INSERT INTO chat_members (chat_id, user_id) VALUES ${insertMembersValues}`,
       [chatId, ...members]
     );
