@@ -78,23 +78,43 @@ export const sendMessage = async (req, res) => {
         [chat_id]
       );
 
-      const wsMessage = JSON.stringify({
+      const wsMessage = {
         id: message.id,
-        chat_id: message.chat_id,
+        chat_id: message.chat_id.toString(), // Убеждаемся, что это строка
         user_id: message.user_id,
         content: message.content,
         created_at: message.created_at,
         sender_email: senderEmail
-      });
+      };
 
+      console.log('Sending WebSocket message to chat:', chat_id);
+      console.log('Message:', wsMessage);
+      console.log('Chat members:', members.rows.map(r => r.user_id));
+      console.log('Connected clients:', Array.from(clients.keys()));
+
+      const wsMessageString = JSON.stringify(wsMessage);
+      
+      let sentCount = 0;
       members.rows.forEach(row => {
-        const client = clients.get(row.user_id.toString());
+        const userIdStr = row.user_id.toString();
+        const client = clients.get(userIdStr);
         if (client && client.readyState === 1) { // WebSocket.OPEN
-          client.send(wsMessage);
+          try {
+            client.send(wsMessageString);
+            sentCount++;
+            console.log(`Message sent to user ${userIdStr}`);
+          } catch (sendError) {
+            console.error(`Error sending to user ${userIdStr}:`, sendError);
+          }
+        } else {
+          console.log(`User ${userIdStr} not connected or connection not open (readyState: ${client?.readyState})`);
         }
       });
+      
+      console.log(`WebSocket message sent to ${sentCount} out of ${members.rows.length} members`);
     } catch (wsError) {
       console.error('Ошибка отправки через WebSocket:', wsError);
+      console.error('Stack:', wsError.stack);
       // Не прерываем выполнение, сообщение уже сохранено в БД
     }
 
