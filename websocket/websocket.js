@@ -3,6 +3,11 @@ import pool from '../db.js';
 
 const clients = new Map(); // userId -> ws
 
+// Экспортируем функцию для получения клиентов
+export function getWebSocketClients() {
+  return clients;
+}
+
 export function setupWebSocket(server) {
   const wss = new WebSocketServer({ server });
 

@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { getWebSocketClients } from '../websocket/websocket.js';
 
 export const getMessages = async (req, res) => {
   const chatId = req.params.chatId;
@@ -58,14 +59,44 @@ export const sendMessage = async (req, res) => {
     );
 
     const message = result.rows[0];
+    const senderEmail = userResult.rows[0]?.email || '';
+    
     const response = {
       id: message.id,
       chat_id: message.chat_id,
       user_id: message.user_id,
       content: message.content,
       created_at: message.created_at,
-      sender_email: userResult.rows[0]?.email || ''
+      sender_email: senderEmail
     };
+
+    // Отправляем сообщение через WebSocket всем участникам чата
+    try {
+      const clients = getWebSocketClients();
+      const members = await pool.query(
+        'SELECT user_id FROM chat_users WHERE chat_id = $1',
+        [chat_id]
+      );
+
+      const wsMessage = JSON.stringify({
+        id: message.id,
+        chat_id: message.chat_id,
+        user_id: message.user_id,
+        content: message.content,
+        created_at: message.created_at,
+        sender_email: senderEmail
+      });
+
+      members.rows.forEach(row => {
+        const client = clients.get(row.user_id.toString());
+        if (client && client.readyState === 1) { // WebSocket.OPEN
+          client.send(wsMessage);
+        }
+      });
+    } catch (wsError) {
+      console.error('Ошибка отправки через WebSocket:', wsError);
+      // Не прерываем выполнение, сообщение уже сохранено в БД
+    }
 
     res.status(201).json(response);
   } catch (error) {

@@ -38,10 +38,13 @@ export const createChat = async (req, res) => {
     // Определяем, групповой ли чат (больше 1 участника)
     const isGroup = userIds.length > 1;
 
-    // Создаём чат с is_group
+    // Первый пользователь в списке - создатель чата
+    const creatorId = userIds[0];
+
+    // Создаём чат с is_group и created_by
     const chatResult = await pool.query(
-      `INSERT INTO chats (name, is_group) VALUES ($1, $2) RETURNING id, name, is_group`,
-      [name, isGroup]
+      `INSERT INTO chats (name, is_group, created_by) VALUES ($1, $2, $3) RETURNING id, name, is_group, created_by`,
+      [name, isGroup, creatorId]
     );
 
     const chatId = chatResult.rows[0].id;
@@ -102,15 +105,36 @@ export const getChatMembers = async (req, res) => {
   try {
     const chatId = req.params.id;
 
+    // Получаем информацию о чате, включая создателя
+    const chatInfo = await pool.query(
+      'SELECT created_by FROM chats WHERE id = $1',
+      [chatId]
+    );
+
+    if (chatInfo.rows.length === 0) {
+      return res.status(404).json({ message: "Чат не найден" });
+    }
+
+    const creatorId = chatInfo.rows[0].created_by;
+
+    // Получаем участников чата
     const result = await pool.query(
       `SELECT u.id, u.email
        FROM users u
        JOIN chat_users cu ON u.id = cu.user_id
-       WHERE cu.chat_id = $1`,
+       WHERE cu.chat_id = $1
+       ORDER BY u.id`,
       [chatId]
     );
 
-    res.json(result.rows);
+    // Добавляем информацию о том, кто создатель
+    const members = result.rows.map(row => ({
+      id: row.id,
+      email: row.email,
+      is_creator: row.id === creatorId
+    }));
+
+    res.json(members);
   } catch (error) {
     console.error("Ошибка getChatMembers:", error);
     res.status(500).json({ message: "Ошибка получения участников чата" });
@@ -205,6 +229,18 @@ export const removeMemberFromChat = async (req, res) => {
       return res.status(404).json({ message: "Чат не найден" });
     }
 
+    // Получаем информацию о чате, включая создателя
+    const chatInfo = await pool.query(
+      'SELECT created_by FROM chats WHERE id = $1',
+      [chatId]
+    );
+
+    if (chatInfo.rows.length === 0) {
+      return res.status(404).json({ message: "Чат не найден" });
+    }
+
+    const creatorId = chatInfo.rows[0].created_by;
+
     // Проверяем, является ли пользователь участником чата
     const memberCheck = await pool.query(
       'SELECT 1 FROM chat_users WHERE chat_id = $1 AND user_id = $2',
@@ -213,6 +249,11 @@ export const removeMemberFromChat = async (req, res) => {
 
     if (memberCheck.rows.length === 0) {
       return res.status(404).json({ message: "Пользователь не является участником чата" });
+    }
+
+    // Не позволяем удалить создателя чата
+    if (userId == creatorId || userId.toString() === creatorId?.toString()) {
+      return res.status(400).json({ message: "Нельзя удалить создателя чата" });
     }
 
     // Получаем количество участников
