@@ -54,5 +54,16 @@ export const login = async (req, res) => {
   }
 };
 
-
+// Получение списка всех пользователей
+export const getAllUsers = async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email FROM users ORDER BY email'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Ошибка получения пользователей:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+};
 
