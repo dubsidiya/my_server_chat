@@ -74,6 +74,7 @@ export const createChat = async (req, res) => {
 export const deleteChat = async (req, res) => {
   try {
     const chatId = req.params.id;
+    const userId = req.body.userId || req.query.userId; // Получаем userId из body или query
 
     if (!chatId) {
       return res.status(400).json({ message: "Укажите ID чата" });
@@ -81,12 +82,42 @@ export const deleteChat = async (req, res) => {
 
     // Проверяем, существует ли чат
     const chatCheck = await pool.query(
-      'SELECT id FROM chats WHERE id = $1',
+      'SELECT id, created_by FROM chats WHERE id = $1',
       [chatId]
     );
 
     if (chatCheck.rows.length === 0) {
       return res.status(404).json({ message: "Чат не найден" });
+    }
+
+    const chat = chatCheck.rows[0];
+    const creatorId = chat.created_by;
+
+    // Если указан userId, проверяем, является ли он создателем
+    if (userId) {
+      // Преобразуем в строку для сравнения
+      const userIdStr = userId.toString();
+      const creatorIdStr = creatorId?.toString();
+      
+      if (creatorIdStr && userIdStr !== creatorIdStr) {
+        return res.status(403).json({ 
+          message: "Только создатель чата может его удалить" 
+        });
+      }
+    }
+
+    // Проверяем, является ли пользователь участником чата (если userId указан)
+    if (userId) {
+      const memberCheck = await pool.query(
+        'SELECT 1 FROM chat_users WHERE chat_id = $1 AND user_id = $2',
+        [chatId, userId]
+      );
+
+      if (memberCheck.rows.length === 0) {
+        return res.status(403).json({ 
+          message: "Вы не являетесь участником этого чата" 
+        });
+      }
     }
 
     // Удаляем чат (каскадное удаление удалит связанные записи в chat_users и messages)
@@ -96,7 +127,11 @@ export const deleteChat = async (req, res) => {
 
   } catch (error) {
     console.error("Ошибка deleteChat:", error);
-    res.status(500).json({ message: "Ошибка удаления чата" });
+    console.error("Stack:", error.stack);
+    res.status(500).json({ 
+      message: "Ошибка удаления чата",
+      error: error.message 
+    });
   }
 };
 
