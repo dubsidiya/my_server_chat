@@ -16,22 +16,48 @@ export function setupWebSocket(server) {
       try {
         const data = JSON.parse(message);
         if (data.type === 'send') {
-          const { chatId, senderId, content } = data;
+          // Приложение может отправлять через WebSocket или через HTTP
+          // Поддерживаем оба варианта
+          const { chatId, chat_id, senderId, user_id, content, senderEmail } = data;
+          
+          // Используем user_id или senderId (для обратной совместимости)
+          const userId = user_id || senderId;
+          const chatIdFinal = chat_id || chatId;
 
+          if (!userId || !chatIdFinal || !content) {
+            return;
+          }
+
+          // Используем user_id (как в схеме БД) вместо sender_id
           const result = await pool.query(`
-            INSERT INTO messages (chat_id, sender_id, content)
+            INSERT INTO messages (chat_id, user_id, content)
             VALUES ($1, $2, $3)
-            RETURNING id, chat_id, sender_id, content, created_at
-          `, [chatId, senderId, content]);
+            RETURNING id, chat_id, user_id, content, created_at
+          `, [chatIdFinal, userId, content]);
+
+          // Получаем email пользователя, если не передан
+          let senderEmailFinal = senderEmail;
+          if (!senderEmailFinal) {
+            const userResult = await pool.query(
+              'SELECT email FROM users WHERE id = $1',
+              [userId]
+            );
+            senderEmailFinal = userResult.rows[0]?.email || '';
+          }
 
           const fullMessage = {
-            ...result.rows[0],
-            sender_email: data.senderEmail,
+            id: result.rows[0].id,
+            chat_id: result.rows[0].chat_id,
+            user_id: result.rows[0].user_id,
+            content: result.rows[0].content,
+            created_at: result.rows[0].created_at,
+            sender_email: senderEmailFinal,
           };
 
+          // Используем chat_users (как в схеме БД) вместо chat_members
           const members = await pool.query(
-            'SELECT user_id FROM chat_members WHERE chat_id = $1',
-            [chatId]
+            'SELECT user_id FROM chat_users WHERE chat_id = $1',
+            [chatIdFinal]
           );
 
           members.rows.forEach(row => {

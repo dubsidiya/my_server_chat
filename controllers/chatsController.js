@@ -5,11 +5,12 @@ export const getUserChats = async (req, res) => {
   try {
     const userId = req.params.id;
 
+    // Используем chat_users (как в схеме БД) вместо chat_members
     const result = await pool.query(
-      `SELECT c.id, c.name
+      `SELECT c.id, c.name, c.is_group
        FROM chats c
-       JOIN chat_members cm ON c.id = cm.chat_id
-       WHERE cm.user_id = $1`,
+       JOIN chat_users cu ON c.id = cu.chat_id
+       WHERE cu.user_id = $1`,
       [userId]
     );
 
@@ -23,6 +24,7 @@ export const getUserChats = async (req, res) => {
 // Создание чата
 export const createChat = async (req, res) => {
   try {
+    // Приложение отправляет: { name, userIds: [userId1, userId2, ...] }
     const { name, userIds } = req.body;
 
     if (!name) {
@@ -30,28 +32,33 @@ export const createChat = async (req, res) => {
     }
 
     if (!Array.isArray(userIds) || userIds.length === 0) {
-      return res.status(400).json({ message: "Укажите хотя бы одного участника" });
+      return res.status(400).json({ message: "Укажите хотя бы одного участника (userIds)" });
     }
 
-    // Создаём чат
+    // Определяем, групповой ли чат (больше 1 участника)
+    const isGroup = userIds.length > 1;
+
+    // Создаём чат с is_group
     const chatResult = await pool.query(
-      `INSERT INTO chats (name) VALUES ($1) RETURNING id, name`,
-      [name]
+      `INSERT INTO chats (name, is_group) VALUES ($1, $2) RETURNING id, name, is_group`,
+      [name, isGroup]
     );
 
     const chatId = chatResult.rows[0].id;
 
-    // Добавляем участников в chat_members
+    // Добавляем участников в chat_users (как в схеме БД)
     for (const userId of userIds) {
       await pool.query(
-        `INSERT INTO chat_members (chat_id, user_id) VALUES ($1, $2)`,
+        `INSERT INTO chat_users (chat_id, user_id) VALUES ($1, $2)`,
         [chatId, userId]
       );
     }
 
+    // Возвращаем 201 (Created) как ожидает приложение
     res.status(201).json({
       id: chatId,
-      name: chatResult.rows[0].name
+      name: chatResult.rows[0].name,
+      is_group: chatResult.rows[0].is_group
     });
 
   } catch (error) {
