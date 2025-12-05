@@ -184,3 +184,73 @@ export const addMembersToChat = async (req, res) => {
     res.status(500).json({ message: "Ошибка добавления участников" });
   }
 };
+
+// Удаление участника из чата
+export const removeMemberFromChat = async (req, res) => {
+  try {
+    const chatId = req.params.id;
+    const userId = req.params.userId; // Получаем из URL параметра
+
+    if (!userId) {
+      return res.status(400).json({ message: "Укажите ID пользователя" });
+    }
+
+    // Проверяем, существует ли чат
+    const chatCheck = await pool.query(
+      'SELECT id FROM chats WHERE id = $1',
+      [chatId]
+    );
+
+    if (chatCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Чат не найден" });
+    }
+
+    // Проверяем, является ли пользователь участником чата
+    const memberCheck = await pool.query(
+      'SELECT 1 FROM chat_users WHERE chat_id = $1 AND user_id = $2',
+      [chatId, userId]
+    );
+
+    if (memberCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Пользователь не является участником чата" });
+    }
+
+    // Получаем количество участников
+    const memberCount = await pool.query(
+      'SELECT COUNT(*) as count FROM chat_users WHERE chat_id = $1',
+      [chatId]
+    );
+    const count = parseInt(memberCount.rows[0].count);
+
+    // Не позволяем удалить последнего участника
+    if (count <= 1) {
+      return res.status(400).json({ message: "Нельзя удалить последнего участника чата" });
+    }
+
+    // Удаляем участника
+    await pool.query(
+      'DELETE FROM chat_users WHERE chat_id = $1 AND user_id = $2',
+      [chatId, userId]
+    );
+
+    // Обновляем is_group, если участников стало 1 или меньше
+    const newCount = await pool.query(
+      'SELECT COUNT(*) as count FROM chat_users WHERE chat_id = $1',
+      [chatId]
+    );
+    const newCountValue = parseInt(newCount.rows[0].count);
+    
+    if (newCountValue <= 1) {
+      await pool.query(
+        'UPDATE chats SET is_group = false WHERE id = $1',
+        [chatId]
+      );
+    }
+
+    res.status(200).json({ message: "Участник успешно удален из чата" });
+
+  } catch (error) {
+    console.error("Ошибка removeMemberFromChat:", error);
+    res.status(500).json({ message: "Ошибка удаления участника" });
+  }
+};
