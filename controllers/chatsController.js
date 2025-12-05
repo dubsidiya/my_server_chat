@@ -66,3 +66,33 @@ export const createChat = async (req, res) => {
     res.status(500).json({ message: "Ошибка создания чата" });
   }
 };
+
+// Удаление чата
+export const deleteChat = async (req, res) => {
+  try {
+    const chatId = req.params.id;
+
+    if (!chatId) {
+      return res.status(400).json({ message: "Укажите ID чата" });
+    }
+
+    // Проверяем, существует ли чат
+    const chatCheck = await pool.query(
+      'SELECT id FROM chats WHERE id = $1',
+      [chatId]
+    );
+
+    if (chatCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Чат не найден" });
+    }
+
+    // Удаляем чат (каскадное удаление удалит связанные записи в chat_users и messages)
+    await pool.query('DELETE FROM chats WHERE id = $1', [chatId]);
+
+    res.status(200).json({ message: "Чат успешно удален" });
+
+  } catch (error) {
+    console.error("Ошибка deleteChat:", error);
+    res.status(500).json({ message: "Ошибка удаления чата" });
+  }
+};
