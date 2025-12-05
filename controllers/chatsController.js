@@ -120,7 +120,23 @@ export const deleteChat = async (req, res) => {
       }
     }
 
-    // Удаляем чат (каскадное удаление удалит связанные записи в chat_users и messages)
+    // Удаляем все сообщения чата (если CASCADE не работает)
+    try {
+      await pool.query('DELETE FROM messages WHERE chat_id = $1', [chatId]);
+    } catch (msgError) {
+      console.error('Ошибка удаления сообщений:', msgError);
+      // Продолжаем, даже если не удалось удалить сообщения
+    }
+
+    // Удаляем всех участников чата (если CASCADE не работает)
+    try {
+      await pool.query('DELETE FROM chat_users WHERE chat_id = $1', [chatId]);
+    } catch (usersError) {
+      console.error('Ошибка удаления участников:', usersError);
+      // Продолжаем, даже если не удалось удалить участников
+    }
+
+    // Удаляем чат
     await pool.query('DELETE FROM chats WHERE id = $1', [chatId]);
 
     res.status(200).json({ message: "Чат успешно удален" });
