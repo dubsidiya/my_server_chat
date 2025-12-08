@@ -124,3 +124,55 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
+
+// Очистка всех сообщений из чата
+export const clearChat = async (req, res) => {
+  const chatId = req.params.chatId;
+  const userId = req.body.userId || req.query.userId;
+
+  if (!chatId) {
+    return res.status(400).json({ message: 'Укажите ID чата' });
+  }
+
+  try {
+    // Проверяем, существует ли чат
+    const chatCheck = await pool.query(
+      'SELECT id, created_by FROM chats WHERE id = $1',
+      [chatId]
+    );
+
+    if (chatCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Чат не найден' });
+    }
+
+    // Если указан userId, проверяем, является ли он участником чата
+    if (userId) {
+      // Проверяем, является ли пользователь участником чата
+      const memberCheck = await pool.query(
+        'SELECT 1 FROM chat_users WHERE chat_id = $1 AND user_id = $2',
+        [chatId, userId]
+      );
+
+      if (memberCheck.rows.length === 0) {
+        return res.status(403).json({ 
+          message: 'Вы не являетесь участником этого чата' 
+        });
+      }
+    }
+
+    // Удаляем все сообщения из чата
+    const deleteResult = await pool.query(
+      'DELETE FROM messages WHERE chat_id = $1',
+      [chatId]
+    );
+
+    res.status(200).json({ 
+      message: 'Чат успешно очищен',
+      deletedCount: deleteResult.rowCount
+    });
+
+  } catch (error) {
+    console.error('Ошибка очистки чата:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+};
