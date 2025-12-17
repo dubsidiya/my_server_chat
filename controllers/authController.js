@@ -1,7 +1,7 @@
 import pool from '../db.js';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../middleware/auth.js';
-import { validateRegisterData } from '../utils/validation.js';
+import { validateRegisterData, validateLoginData } from '../utils/validation.js';
 
 export const register = async (req, res) => {
   const { email, password } = req.body;

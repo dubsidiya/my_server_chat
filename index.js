@@ -15,6 +15,10 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// Настройка trust proxy для работы за прокси (Render.com, Cloudflare и т.д.)
+// Это необходимо для правильной работы express-rate-limit
+app.set('trust proxy', true);
+
 // Настройка CORS - ограничиваем только разрешенные домены
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',')
@@ -43,6 +47,10 @@ const authLimiter = rateLimit({
   message: 'Слишком много попыток входа, попробуйте позже',
   standardHeaders: true,
   legacyHeaders: false,
+  // Используем IP из заголовка X-Forwarded-For (когда trust proxy установлен)
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress;
+  },
 });
 
 // Применяем rate limiting только к эндпоинтам аутентификации
