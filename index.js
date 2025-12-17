@@ -57,6 +57,29 @@ app.use('/messages', messageRoutes);
 setupWebSocket(server);
 
 const PORT = process.env.PORT || 3000;
+
+// Обработка ошибок при запуске сервера
+server.on('error', (err) => {
+  console.error('❌ Ошибка сервера:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Порт ${PORT} уже занят`);
+  }
+});
+
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔐 JWT_SECRET: ${process.env.JWT_SECRET ? 'установлен' : 'НЕ УСТАНОВЛЕН!'}`);
+  console.log(`🌐 ALLOWED_ORIGINS: ${process.env.ALLOWED_ORIGINS || 'по умолчанию'}`);
+  console.log(`🗄️  DATABASE_URL: ${process.env.DATABASE_URL ? 'установлен' : 'НЕ УСТАНОВЛЕН!'}`);
+});
+
+// Обработка необработанных ошибок
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
 });
