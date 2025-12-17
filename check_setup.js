@@ -40,10 +40,10 @@ if (!databaseUrl) {
 
 // Проверка зависимостей
 try {
-  await import('bcrypt');
-  console.log('✅ bcrypt установлен');
+  await import('bcryptjs');
+  console.log('✅ bcryptjs установлен');
 } catch (e) {
-  errors.push('❌ bcrypt не установлен - запустите: npm install');
+  errors.push('❌ bcryptjs не установлен - запустите: npm install');
 }
 
 try {

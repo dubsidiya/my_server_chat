@@ -1,5 +1,5 @@
 import pool from '../db.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { generateToken } from '../middleware/auth.js';
 import { validateRegisterData } from '../utils/validation.js';
 

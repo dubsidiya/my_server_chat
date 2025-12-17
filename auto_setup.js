@@ -62,7 +62,7 @@ if (updated) {
 console.log('\n📦 Проверка зависимостей...');
 try {
   const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
-  const requiredDeps = ['bcrypt', 'jsonwebtoken', 'express-rate-limit', 'validator'];
+  const requiredDeps = ['bcryptjs', 'jsonwebtoken', 'express-rate-limit', 'validator'];
   const missingDeps = requiredDeps.filter(dep => !packageJson.dependencies[dep]);
   
   if (missingDeps.length > 0) {
