@@ -32,7 +32,8 @@ if (!allowedOrigins) {
 // Проверка DATABASE_URL
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  errors.push('❌ DATABASE_URL не установлен в .env');
+  // DATABASE_URL может быть настроен на сервере (Render.com), поэтому это предупреждение, а не ошибка
+  warnings.push('⚠️  DATABASE_URL не установлен в .env (должен быть настроен на сервере Render.com)');
 } else {
   console.log('✅ DATABASE_URL установлен');
 }
