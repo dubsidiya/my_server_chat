@@ -6,15 +6,22 @@ import { validateRegisterData } from '../utils/validation.js';
 export const register = async (req, res) => {
   const { email, password } = req.body;
 
+  // Проверяем наличие данных
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email и пароль обязательны' });
+  }
+
+  // Нормализуем email перед валидацией (убираем пробелы, приводим к нижнему регистру)
+  const normalizedEmail = email.trim().toLowerCase();
+
   // Валидация данных
-  const validation = validateRegisterData(email, password);
+  const validation = validateRegisterData(normalizedEmail, password);
   if (!validation.valid) {
+    console.log('Валидация не прошла:', { email: normalizedEmail, error: validation.message });
     return res.status(400).json({ message: validation.message });
   }
 
   try {
-    // Нормализуем email (приводим к нижнему регистру)
-    const normalizedEmail = email.toLowerCase().trim();
     
     const existing = await pool.query('SELECT 1 FROM users WHERE email = $1', [normalizedEmail]);
     if (existing.rows.length > 0) {

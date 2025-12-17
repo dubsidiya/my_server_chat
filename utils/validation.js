@@ -6,7 +6,19 @@ export const validateEmail = (email) => {
     return { valid: false, message: 'Email обязателен' };
   }
   
-  if (!validator.isEmail(email)) {
+  // Нормализуем email перед валидацией (убираем пробелы, приводим к нижнему регистру)
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  if (!normalizedEmail) {
+    return { valid: false, message: 'Email обязателен' };
+  }
+  
+  // Используем более мягкую валидацию email
+  // validator.isEmail() может быть слишком строгим, поэтому используем опции
+  if (!validator.isEmail(normalizedEmail, { 
+    allow_utf8_local_part: true,
+    require_tld: true 
+  })) {
     return { valid: false, message: 'Неверный формат email' };
   }
   
