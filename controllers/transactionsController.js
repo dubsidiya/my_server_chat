@@ -4,9 +4,13 @@ import pool from '../db.js';
 export const depositBalance = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { student_id, amount, description } = req.body;
+    const student_id = parseInt(req.params.studentId);
+    const { amount, description } = req.body;
 
-    if (!student_id || !amount || amount <= 0) {
+    // Преобразуем amount в число, если это строка
+    const amountNum = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+    if (!student_id || isNaN(student_id) || !amountNum || amountNum <= 0) {
       return res.status(400).json({ message: 'ID студента и сумма обязательны' });
     }
 
@@ -25,7 +29,7 @@ export const depositBalance = async (req, res) => {
       `INSERT INTO transactions (student_id, amount, type, description, created_by)
        VALUES ($1, $2, 'deposit', $3, $4)
        RETURNING *`,
-      [student_id, amount, description || 'Пополнение баланса', userId]
+      [student_id, amountNum, description || 'Пополнение баланса', userId]
     );
 
     res.status(201).json(result.rows[0]);
