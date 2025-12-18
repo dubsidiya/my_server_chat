@@ -12,13 +12,9 @@ const parseReportContent = (content, reportDate, userId) => {
   const lessons = [];
   
   // Пропускаем первую строку с датой (например, "17 декабря")
-  // Пропускаем вторую строку "за какой день отчет"
   let startIndex = 0;
   if (lines.length > 0 && /^\d+\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)/i.test(lines[0])) {
     startIndex = 1;
-  }
-  if (lines.length > startIndex && /за какой день/i.test(lines[startIndex])) {
-    startIndex++;
   }
 
   for (let i = startIndex; i < lines.length; i++) {
