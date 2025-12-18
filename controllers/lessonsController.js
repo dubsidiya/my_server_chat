@@ -34,9 +34,13 @@ export const getStudentLessons = async (req, res) => {
 export const createLesson = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { student_id, lesson_date, lesson_time, duration_minutes, price, notes } = req.body;
+    const student_id = parseInt(req.params.studentId);
+    const { lesson_date, lesson_time, duration_minutes, price, notes } = req.body;
 
-    if (!student_id || !lesson_date || !price) {
+    // Преобразуем price в число, если это строка
+    const priceNum = typeof price === 'string' ? parseFloat(price) : price;
+
+    if (!student_id || isNaN(student_id) || !lesson_date || !priceNum || priceNum <= 0) {
       return res.status(400).json({ message: 'ID студента, дата и цена обязательны' });
     }
 
@@ -55,7 +59,7 @@ export const createLesson = async (req, res) => {
       `INSERT INTO lessons (student_id, lesson_date, lesson_time, duration_minutes, price, notes, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [student_id, lesson_date, lesson_time || null, duration_minutes || 60, price, notes || null, userId]
+      [student_id, lesson_date, lesson_time || null, duration_minutes || 60, priceNum, notes || null, userId]
     );
 
     const lesson = lessonResult.rows[0];
@@ -66,7 +70,7 @@ export const createLesson = async (req, res) => {
        VALUES ($1, $2, 'lesson', $3, $4, $5)`,
       [
         student_id,
-        price,
+        priceNum,
         `Занятие ${lesson_date}${lesson_time ? ' в ' + lesson_time : ''}`,
         lesson.id,
         userId
